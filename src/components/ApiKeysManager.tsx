@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle, Copy, Key } from "lucide-react";
+import { CheckCircle, Copy, Key, Terminal } from "lucide-react";
 
 interface ApiKeyInfo {
   _id: string;
@@ -23,7 +23,7 @@ export default function ApiKeysManager() {
   const [name, setName] = useState("");
   const [newKey, setNewKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState<"key" | "cmd" | false>(false);
 
   async function loadKeys() {
     const data = await listApiKeys();
@@ -55,10 +55,16 @@ export default function ApiKeysManager() {
     await loadKeys();
   }
 
-  function handleCopy() {
-    if (newKey) {
-      navigator.clipboard.writeText(newKey);
-      setCopied(true);
+  function getClaudeCommand() {
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000";
+    return `claude mcp add --scope user --transport http todo-mcp ${baseUrl}/api/mcp --header "x-api-key: ${newKey}"`;
+  }
+
+  function handleCopy(target: "key" | "cmd") {
+    const text = target === "cmd" ? getClaudeCommand() : newKey;
+    if (text) {
+      navigator.clipboard.writeText(text);
+      setCopied(target);
       setTimeout(() => setCopied(false), 2000);
     }
   }
@@ -84,21 +90,46 @@ export default function ApiKeysManager() {
         <Alert className="mb-6 border-emerald-500/20 bg-emerald-500/10">
           <CheckCircle className="h-4 w-4 text-emerald-400" />
           <AlertDescription>
-            <p className="text-sm font-medium text-emerald-400 mb-2">
+            <p className="text-sm font-medium text-emerald-400 mb-3">
               Key created! Copy it now — it won&apos;t be shown again.
             </p>
-            <code className="block bg-background rounded p-2 text-sm break-all">
-              {newKey}
-            </code>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopy}
-              className="mt-2 text-emerald-400 hover:text-emerald-300"
-            >
-              <Copy className="h-3.5 w-3.5 mr-1" />
-              {copied ? "Copied!" : "Copy to clipboard"}
-            </Button>
+
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">API Key</p>
+                <code className="block bg-background rounded p-2 text-sm break-all">
+                  {newKey}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCopy("key")}
+                  className="mt-1 text-emerald-400 hover:text-emerald-300"
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1" />
+                  {copied === "key" ? "Copied!" : "Copy key"}
+                </Button>
+              </div>
+
+              <div>
+                <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                  <Terminal className="h-3 w-3" />
+                  Add to Claude Code
+                </p>
+                <code className="block bg-background rounded p-2 text-sm break-all">
+                  {getClaudeCommand()}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleCopy("cmd")}
+                  className="mt-1 text-emerald-400 hover:text-emerald-300"
+                >
+                  <Copy className="h-3.5 w-3.5 mr-1" />
+                  {copied === "cmd" ? "Copied!" : "Copy command"}
+                </Button>
+              </div>
+            </div>
           </AlertDescription>
         </Alert>
       )}
